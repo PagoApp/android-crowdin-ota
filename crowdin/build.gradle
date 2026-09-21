@@ -90,7 +90,6 @@ dependencies {
     implementation "com.squareup.okhttp3:logging-interceptor:4.10.0"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.20"
     implementation "androidx.constraintlayout:constraintlayout:2.1.4"
-    implementation 'com.karumi:dexter:6.2.2'
     implementation "androidx.multidex:multidex:2.0.1"
 
     testImplementation 'junit:junit:4.13.2'
