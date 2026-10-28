@@ -10,7 +10,7 @@ on:
 
 jobs:
   dependency-analysis:
-    uses: crowdin/.github/.github/workflows/dependency-analysis.yml@main
+    uses: crowdin/.github/.github/workflows/dependency-analysis.yml@c9b4bd09f73f901bc1cabf87603214c0feb8465c # main as of 2026-10-28
     secrets:
       FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
     with:
