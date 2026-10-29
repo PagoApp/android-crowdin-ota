@@ -1,0 +1,66 @@
+name: GitLeaks
+
+# Scans the commits a pull request or merge-queue group adds for secrets.
+#
+# The scanned repository's .gitleaks.toml and .gitleaksignore are read from
+# the base commit, never from the pull request, so a change cannot allowlist
+# the secret it adds. Land a config change on its own first.
+#
+# No actions are used (not even actions/checkout): nothing to pin, bump or
+# migrate when GitHub retires a Node runtime. The only versioned piece is the
+# gitleaks binary, bumped by hand when wanted.
+on:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GITLEAKS_VERSION: 8.30.1
+  GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+  BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+  HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+
+jobs:
+  scan:
+    name: GitLeaks Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch the commits to scan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git init -q .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="$auth" fetch -q --no-tags origin $BASE $HEAD
+
+      - name: Install gitleaks
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Scan the commits this change adds
+        run: |
+          if [ -n "$BASE" ]; then
+            config_ref="$BASE"
+            log_opts="--no-merges ${BASE}..${HEAD}"
+          else
+            config_ref="$HEAD"
+            log_opts="$HEAD"
+          fi
+          args=()
+          if git show "$config_ref:.gitleaks.toml" > "$RUNNER_TEMP/gitleaks.toml" 2>/dev/null; then
+            args+=(--config "$RUNNER_TEMP/gitleaks.toml")
+          fi
+          if git show "$config_ref:.gitleaksignore" > "$RUNNER_TEMP/.gitleaksignore" 2>/dev/null; then
+            args+=(--gitleaks-ignore-path "$RUNNER_TEMP/.gitleaksignore")
+          fi
+          echo "Scanning: git log $log_opts (config from ${config_ref:0:12})"
+          gitleaks git --redact --verbose "${args[@]}" --log-opts="$log_opts" .
