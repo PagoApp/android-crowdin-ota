@@ -4,7 +4,8 @@ name: GitLeaks
 #
 # The scanned repository's .gitleaks.toml and .gitleaksignore are read from
 # the base commit, never from the pull request, so a change cannot allowlist
-# the secret it adds. Land a config change on its own first.
+# the secret it adds. Land a config change on its own first. Inline
+# "gitleaks:allow" comments are ignored for the same reason.
 #
 # No actions are used (not even actions/checkout): nothing to pin, bump or
 # migrate when GitHub retires a Node runtime. The only versioned piece is the
@@ -63,4 +64,4 @@ jobs:
             args+=(--gitleaks-ignore-path "$RUNNER_TEMP/.gitleaksignore")
           fi
           echo "Scanning: git log $log_opts (config from ${config_ref:0:12})"
-          gitleaks git --redact --verbose "${args[@]}" --log-opts="$log_opts" .
+          gitleaks git --redact --verbose --ignore-gitleaks-allow "${args[@]}" --log-opts="$log_opts" .
