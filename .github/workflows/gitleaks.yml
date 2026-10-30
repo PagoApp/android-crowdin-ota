@@ -12,6 +12,10 @@ name: GitLeaks
 # gitleaks binary, bumped by hand when wanted.
 on:
   pull_request:
+    # edited also fires when the base branch changes (a stacked pull request
+    # retargeted onto the protected branch), which the default types miss.
+    # A title or description edit re-runs the scan too; it takes seconds.
+    types: [opened, synchronize, reopened, edited]
   merge_group:
   workflow_dispatch:
 
